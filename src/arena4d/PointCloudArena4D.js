@@ -63,7 +63,7 @@ Potree.PointCloudArena4D.prototype.updateMaterial = function(camera, renderer){
 	
 	this.material.minSize = 3;
 	
-	var bbSize = this.boundingBox.size();
+	var bbSize = this.boundingBox.getSize();
 	this.material.bbSize = [bbSize.x, bbSize.y, bbSize.z];
 };
 
@@ -240,7 +240,7 @@ Potree.PointCloudArena4D.prototype.update = function(camera, renderer){
 				var sphere = child.boundingSphere;
 				var distance = sphere.center.distanceTo(camObjPos);
 				
-				var radius = box.size().length() / 2;
+				var radius = box.getSize().length() / 2;
 				var fov = camera.fov / 2 * Math.PI / 180.0;
 				var pr = 1 / Math.tan(fov) * radius / Math.sqrt(distance * distance - radius * radius);
 				

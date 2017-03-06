@@ -37,11 +37,11 @@ Potree.PointCloudOctreeGeometryNode.prototype.getURL = function(){
 	var version = this.pcoGeometry.loader.version;
 	
 	if(version.equalOrHigher("1.5")){
-		url = this.pcoGeometry.octreeDir + "/" + this.getHierarchyPath() + "/" + this.name;
+		url = Potree.utils.appendUrl(Potree.utils.appendUrl(this.pcoGeometry.octreeDir, this.getHierarchyPath()), this.name);
 	}else if(version.equalOrHigher("1.4")){
-		url = this.pcoGeometry.octreeDir + "/" + this.name;
+		url = Potree.utils.appendUrl(this.pcoGeometry.octreeDir, this.name);
 	}else if(version.upTo("1.3")){
-		url = this.pcoGeometry.octreeDir + "/" + this.name;
+		url = Potree.utils.appendUrl(this.pcoGeometry.octreeDir, this.name);
 	}
 	
 	return url;
@@ -175,7 +175,7 @@ Potree.PointCloudOctreeGeometryNode.prototype.loadHierachyThenPoints = function(
 	};
 	if((node.level % node.pcoGeometry.hierarchyStepSize) === 0){
 		//var hurl = node.pcoGeometry.octreeDir + "/../hierarchy/" + node.name + ".hrc";
-		var hurl = node.pcoGeometry.octreeDir + "/" + node.getHierarchyPath() + "/" + node.name + ".hrc";
+		var hurl = Potree.utils.appendUrl(Potree.utils.appendUrl(node.pcoGeometry.octreeDir, node.getHierarchyPath()), node.name + ".hrc");
 		
 		var xhr = new XMLHttpRequest();
 		xhr.open('GET', hurl, true);

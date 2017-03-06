@@ -29,7 +29,7 @@ Potree.LasLazLoader.prototype.load = function(node){
 	var url = node.getURL();
 	
 	if(this.version.equalOrHigher("1.4")){
-		url += "." + pointAttributes.toLowerCase();
+		url = Potree.utils.appendUrl(url, "." + pointAttributes.toLowerCase(), false);
 	}
 	
 	var scope = this;

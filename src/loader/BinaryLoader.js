@@ -20,7 +20,7 @@ Potree.BinaryLoader.prototype.load = function(node){
 	var url = node.getURL();
 	
 	if(this.version.equalOrHigher("1.4")){
-		url += ".bin";
+		url = Potree.utils.appendUrl(url, ".bin", false);
 	}
 	
 	var xhr = new XMLHttpRequest();
@@ -44,6 +44,9 @@ Potree.BinaryLoader.prototype.load = function(node){
 	}
 };
 
+Potree.BinaryLoader.prototype.progressCB = function(val){
+};
+
 Potree.BinaryLoader.prototype.parse = function(node, buffer){
 
 	var numPoints = buffer.byteLength / node.pcoGeometry.pointAttributes.byteSize;
@@ -53,6 +56,7 @@ Potree.BinaryLoader.prototype.parse = function(node, buffer){
 		node.numPoints = numPoints;
 	}
 	
+	var progressCB = this.progressCB;
 	var ww = Potree.workers.binaryDecoder.getWorker();
 	ww.onmessage = function(e){
 		var data = e.data;
@@ -104,6 +108,7 @@ Potree.BinaryLoader.prototype.parse = function(node, buffer){
 		node.loaded = true;
 		node.loading = false;
 		node.pcoGeometry.numNodesLoading--;
+		progressCB(node.pcoGeometry.progress);
 	}
 	
 	var message = {

@@ -98,7 +98,7 @@ Potree.PointCloudOctree.prototype.updateVisibility = function(camera, renderer){
 			
 			if((typeof parent === "undefined" || parent instanceof Potree.PointCloudOctreeNode) && geometryNode.loaded){
 				var pcoNode = new Potree.PointCloudOctreeNode();
-				var sceneNode = new THREE.PointCloud(geometry, this.material);
+				var sceneNode = new THREE.Points(geometry, this.material);
 				sceneNode.visible = false;
 				
 				pcoNode.name = geometryNode.name;
@@ -251,7 +251,7 @@ Potree.PointCloudOctree.prototype.updateMaterial = function(material, visibleNod
 	material.spacing = this.pcoGeometry.spacing;
 	material.near = camera.near;
 	material.far = camera.far;
-	material.uniforms.octreeSize.value = this.pcoGeometry.boundingBox.size().x;
+	material.uniforms.octreeSize.value = this.pcoGeometry.boundingBox.getSize().x;
 	
 	// update visibility texture
 	if(material.pointSizeType){
@@ -592,7 +592,7 @@ Potree.PointCloudOctree.prototype.getProfile = function(start, end, width, depth
 			
 			var pointsFound = 0;
 			
-			if(object instanceof THREE.PointCloud){
+			if(object instanceof THREE.Points){
 				var geometry = object.geometry;
 				var positions = geometry.attributes.position;
 				var p = positions.array;
@@ -655,7 +655,7 @@ Potree.PointCloudOctree.prototype.getProfile = function(start, end, width, depth
 			if(object == this || object.level < depth){
 				for(var i = 0; i < object.children.length; i++){
 					var child = object.children[i];
-					if(child instanceof THREE.PointCloud){
+					if(child instanceof THREE.Points){
 						var sphere = child.boundingSphere.clone().applyMatrix4(child.matrixWorld);
 						if(cutPlane.distanceToSphere(sphere) < sphere.radius){
 							stack.push(child);	
@@ -916,7 +916,7 @@ Potree.PointCloudOctree.prototype.createDEM = function(node){
 	var world = sceneNode.matrixWorld;
 
 	var boundingBox = sceneNode.boundingBox.clone().applyMatrix4(world);
-	var bbSize = boundingBox.size();
+	var bbSize = boundingBox.getSize();
 	var positions = sceneNode.geometry.attributes.position.array;
 	var demSize = 64;
 	var demMArray = new Array(demSize*demSize);
@@ -1095,7 +1095,7 @@ Potree.PointCloudOctree.prototype.getDEMHeight = function(position){
 		var box = dem.boundingBox2D;
 		var insideBox = box.containsPoint(pos2);
 		if(box.containsPoint(pos2)){
-			var uv = pos2.clone().sub(box.min).divide(box.size());
+			var uv = pos2.clone().sub(box.min).divide(box.getSize());
 			var xy = uv.clone().multiplyScalar(demSize);
 			
 			var demHeight = 0;
@@ -1199,8 +1199,8 @@ Potree.PointCloudOctree.prototype.generateTerain = function(){
 			var u = i / width;
 			var v = j / height;
 			
-			var x = u * bb.size().x + bb.min.x;
-			var z = v * bb.size().z + bb.min.z;
+			var x = u * bb.getSize().x + bb.min.x;
+			var z = v * bb.getSize().z + bb.min.z;
 			
 			var y = this.getDEMHeight(new THREE.Vector3(x, 0, z));
 			if(!y){
@@ -1222,7 +1222,7 @@ Potree.PointCloudOctree.prototype.generateTerain = function(){
 	geometry.addAttribute( 'position', new THREE.BufferAttribute( vertices, 3 ) );
 	var material = new THREE.PointCloudMaterial({size: 20, color: 0x00ff00});
 	
-	var pc = new THREE.PointCloud(geometry, material);
+	var pc = new THREE.Points(geometry, material);
 	scene.add(pc);
 	
 };

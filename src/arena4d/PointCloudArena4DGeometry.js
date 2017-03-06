@@ -137,7 +137,7 @@ Potree.PointCloudArena4DGeometry.load = function(url, callback){
 				geometry.offset = offset;
 				
 				var center = geometry.boundingBox.center();
-				var radius = geometry.boundingBox.size().length() / 2;
+				var radius = geometry.boundingBox.getSize().length() / 2;
 				geometry.boundingSphere = new THREE.Sphere(center, radius);
 				
 				geometry.loadHierarchy();
@@ -213,7 +213,7 @@ Potree.PointCloudArena4DGeometry.prototype.loadHierarchy = function(){
 			if(stack.length > 0){
 				var parent = stack[stack.length-1];
 				node.boundingBox = parent.boundingBox.clone();
-				var parentBBSize = parent.boundingBox.size();
+				var parentBBSize = parent.boundingBox.getSize();
 				
 				if(parent.hasLeft && !parent.left){
 					parent.left = node;
@@ -227,7 +227,7 @@ Potree.PointCloudArena4DGeometry.prototype.loadHierarchy = function(){
 					}
 					
 					var center = node.boundingBox.center();
-					var radius = node.boundingBox.size().length() / 2;
+					var radius = node.boundingBox.getSize().length() / 2;
 					node.boundingSphere = new THREE.Sphere(center, radius);
 					
 				}else{
@@ -242,18 +242,18 @@ Potree.PointCloudArena4DGeometry.prototype.loadHierarchy = function(){
 					}
 					
 					var center = node.boundingBox.center();
-					var radius = node.boundingBox.size().length() / 2;
+					var radius = node.boundingBox.getSize().length() / 2;
 					node.boundingSphere = new THREE.Sphere(center, radius);
 				}
 			}else{
 				root = node;
 				root.boundingBox = scope.boundingBox.clone();
 				var center = root.boundingBox.center();
-				var radius = root.boundingBox.size().length() / 2;
+				var radius = root.boundingBox.getSize().length() / 2;
 				root.boundingSphere = new THREE.Sphere(center, radius);
 			}
 			
-			var bbSize = node.boundingBox.size();
+			var bbSize = node.boundingBox.getSize();
 			node.spacing = ((bbSize.x + bbSize.y + bbSize.z) / 3) / 75;
 			
 			stack.push(node);

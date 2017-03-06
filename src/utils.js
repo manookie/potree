@@ -326,6 +326,64 @@ Potree.utils.screenPass = new function(){
 		}
 	}
 }();
-	
+
+/**
+ * Appends a path to an existing URL while preserving any query string parameters present in the URL. Also
+ * can be used to replace a portion of the path of a URL.
+ *
+ * @param {string} url                  A URL (absolute or relative) with optional query string parameters.
+ * @param {string} path                 A path that will be appended to the URL. Should not include
+ *                                      query string parameters.
+ * @param {boolean} [appendSlash=true]  Specifies whether this function should ensure a single slash
+ *                                      exists between the url and path before concatenating them.
+ * @param {boolean} [removeLast=false]  Specifies whether the last directory in the path of the URL should
+ *                                      be replaced with the path given as the second parameter. This
+ *                                      should be used in cases where you want to modify a URL's path,
+ *                                      rather than simply append to it.
+ *
+ * @example <caption>Append to the path of a URL.</caption>
+ * Potree.utils.appendUrl("http://api.service.com/company/users?first=Michael&last=Jackson", "/members")
+ * => "http://api.service.com/company/users/members?first=Michael&last=Jackson"
+ *
+ * @Example <caption>Replace the last part of the path of a URL.</caption>
+ * Potree.utils.appendUrl("http://api.service.com/company/users?first=Michael&last=Jackson", "/members", true, true)
+ * => "http://api.service.com/company/members?first=Michael&last=Jackson"
+ */
+Potree.utils.appendUrl = function(url, path, appendSlash, removeLast){
+		// Set defaults
+	if(typeof appendSlash === "undefined"){
+		appendSlash = true;
+	}
+
+	if(typeof removeLast === "undefined"){
+		removeLast = false;
+	}
+
+	// Split out the base and query string
+	var parts = url.split('?');
+	var base = parts.shift();
+
+	// Remove the last part of the URL path if set
+	if(removeLast){
+		base = base.substring(0, base.lastIndexOf('/'));
+	}
+
+	// Make sure there is a slash and only one slash between url fragments
+	if(appendSlash){
+		base = base.replace(/\/?$/, '/');
+		path = path.replace(/^\/?/g, '');
+	}
+
+	// Append fragments
+	var newUrl = base + path;
+
+	// Append query string
+	if(parts.length){
+		newUrl += '?' + parts.join('?');
+	}
+
+	return newUrl;
+}
+
 	
 	

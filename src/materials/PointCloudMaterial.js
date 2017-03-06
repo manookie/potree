@@ -88,7 +88,20 @@ Potree.PointCloudMaterial = function(parameters){
 	parameters = parameters || {};
 
 	var color = new THREE.Color( 0xffffff );
-	var map = THREE.ImageUtils.generateDataTexture( 2048, 1, color );
+	
+	var width = 2048;
+	var height = 1;
+
+	var data = new Uint8Array(width * height * 3);
+
+	for (var i = 0; i < width * height; i++) {
+	    data[i * 4] = color.r;
+	    data[i * 4 + 1] = color.g;
+	    data[i * 4 + 2] = color.b;
+	}
+
+	var map = new THREE.DataTexture(data, width, height, THREE.RGBFormat);
+	
 	map.magFilter = THREE.NearestFilter;
 	this.visibleNodesTexture = map;
 	
@@ -148,22 +161,64 @@ Potree.PointCloudMaterial = function(parameters){
 		diffuse:			{ type: "fv", value: [1,1,1]},
 		ambient:			{ type: "fv", value: [0.1, 0.1, 0.1]},
 		ambientLightColor: 			{ type: "fv", value: [1, 1, 1] },
-		directionalLightColor: 		{ type: "fv", value: null },
-		directionalLightDirection: 	{ type: "fv", value: null },
-		pointLightColor: 			{ type: "fv", value: null },
-		pointLightPosition: 		{ type: "fv", value: null },
-		pointLightDistance: 		{ type: "fv1", value: null },
-		pointLightDecay: 			{ type: "fv1", value: null },
-		spotLightColor: 			{ type: "fv", value: null },
-		spotLightPosition: 			{ type: "fv", value: null },
-		spotLightDistance: 			{ type: "fv1", value: null },
-		spotLightDecay: 			{ type: "fv1", value: null },
-		spotLightDirection: 		{ type: "fv", value: null },
-		spotLightAngleCos: 			{ type: "fv1", value: null },
-		spotLightExponent: 			{ type: "fv1", value: null },
-		hemisphereLightSkyColor: 	{ type: "fv", value: null },
-		hemisphereLightGroundColor: { type: "fv", value: null },
-		hemisphereLightDirection: 	{ type: "fv", value: null },
+		directionalLights: {
+		    type: "sa", value: [], properties: {
+		        "direction": { type: "v3" },
+		        "color": { type: "c" },
+		        "shadow": { type: "i" },
+		        "shadowBias": { type: "f" },
+		        "shadowRadius": { type: "f" },
+		        "shadowMapSize": { type: "v2" }
+		    }
+		},
+
+		directionalShadowMap: { type: "tv", value: [] },
+		directionalShadowMatrix: { type: "m4v", value: [] },
+
+		spotLights: {
+		    type: "sa", value: [], properties: {
+		        "color": { type: "c" },
+		        "position": { type: "v3" },
+		        "direction": { type: "v3" },
+		        "distance": { type: "f" },
+		        "angleCos": { type: "f" },
+		        "penumbra": { type: "f" },
+		        "decay": { type: "f" },
+
+		        "shadow": { type: "i" },
+		        "shadowBias": { type: "f" },
+		        "shadowRadius": { type: "f" },
+		        "shadowMapSize": { type: "v2" }
+		    }
+		},
+
+		spotShadowMap: { type: "tv", value: [] },
+		spotShadowMatrix: { type: "m4v", value: [] },
+
+		pointLights: {
+		    type: "sa", value: [], properties: {
+		        "color": { type: "c" },
+		        "position": { type: "v3" },
+		        "decay": { type: "f" },
+		        "distance": { type: "f" },
+
+		        "shadow": { type: "i" },
+		        "shadowBias": { type: "f" },
+		        "shadowRadius": { type: "f" },
+		        "shadowMapSize": { type: "v2" }
+		    }
+		},
+
+		pointShadowMap: { type: "tv", value: [] },
+		pointShadowMatrix: { type: "m4v", value: [] },
+
+		hemisphereLights: {
+		    type: "sa", value: [], properties: {
+		        "direction": { type: "v3" },
+		        "skyColor": { type: "c" },
+		        "groundColor": { type: "c" }
+		    }
+		}
 	};
 	
 	this.defaultAttributeValues.normal = [0,0,0];
@@ -734,8 +789,8 @@ Potree.PointCloudMaterial.generateGradientTexture = function(gradient) {
 Potree.PointCloudMaterial.generateClassificationTexture  = function(classification){
 	var width = 256;
 	var height = 256;
-	var map = THREE.ImageUtils.generateDataTexture( width, height, new THREE.Color() );
-	map.magFilter = THREE.NearestFilter;
+	var map = new THREE.DataTexture(new ArrayBuffer(width * height * 3), width, height, THREE.RGBFormat, THREE.UVMapping, THREE.ClampToEdgeWrapping, THREE.ClampToEdgeWrapping, THREE.LinearFilter, THREE.LinearMipMapLinearFilter, 1);
+
 	var data = map.image.data;
 	
 	for(var x = 0; x < width; x++){

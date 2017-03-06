@@ -1016,7 +1016,7 @@ Potree.POCLoader.load = function load(url, callback) {
 				if(fMno.octreeDir.indexOf("http") === 0){
 					pco.octreeDir = fMno.octreeDir;
 				}else{
-					pco.octreeDir = url + "/../" + fMno.octreeDir;
+					pco.octreeDir = Potree.utils.appendUrl(url, fMno.octreeDir, true, true);
 				}
 				
 				pco.spacing = fMno.spacing;
@@ -1341,7 +1341,7 @@ Potree.BinaryLoader.prototype.load = function(node){
 	var url = node.getURL();
 	
 	if(this.version.equalOrHigher("1.4")){
-		url += ".bin";
+		url = Potree.utils.appendUrl(url, ".bin", false);
 	}
 	
 	var xhr = new XMLHttpRequest();
@@ -1365,6 +1365,9 @@ Potree.BinaryLoader.prototype.load = function(node){
 	}
 };
 
+Potree.BinaryLoader.prototype.progressCB = function(val){
+};
+
 Potree.BinaryLoader.prototype.parse = function(node, buffer){
 
 	var numPoints = buffer.byteLength / node.pcoGeometry.pointAttributes.byteSize;
@@ -1374,6 +1377,7 @@ Potree.BinaryLoader.prototype.parse = function(node, buffer){
 		node.numPoints = numPoints;
 	}
 	
+	var progressCB = this.progressCB;
 	var ww = Potree.workers.binaryDecoder.getWorker();
 	ww.onmessage = function(e){
 		var data = e.data;
@@ -1425,6 +1429,7 @@ Potree.BinaryLoader.prototype.parse = function(node, buffer){
 		node.loaded = true;
 		node.loading = false;
 		node.pcoGeometry.numNodesLoading--;
+		progressCB(node.pcoGeometry.progress);
 	}
 	
 	var message = {
@@ -1471,7 +1476,7 @@ Potree.LasLazLoader.prototype.load = function(node){
 	var url = node.getURL();
 	
 	if(this.version.equalOrHigher("1.4")){
-		url += "." + pointAttributes.toLowerCase();
+		url = Potree.utils.appendUrl(url, "." + pointAttributes.toLowerCase(), false);
 	}
 	
 	var scope = this;
@@ -1766,7 +1771,20 @@ Potree.PointCloudMaterial = function(parameters){
 	parameters = parameters || {};
 
 	var color = new THREE.Color( 0xffffff );
-	var map = THREE.ImageUtils.generateDataTexture( 2048, 1, color );
+	
+	var width = 2048;
+	var height = 1;
+
+	var data = new Uint8Array(width * height * 3);
+
+	for (var i = 0; i < width * height; i++) {
+	    data[i * 4] = color.r;
+	    data[i * 4 + 1] = color.g;
+	    data[i * 4 + 2] = color.b;
+	}
+
+	var map = new THREE.DataTexture(data, width, height, THREE.RGBFormat);
+	
 	map.magFilter = THREE.NearestFilter;
 	this.visibleNodesTexture = map;
 	
@@ -1826,22 +1844,64 @@ Potree.PointCloudMaterial = function(parameters){
 		diffuse:			{ type: "fv", value: [1,1,1]},
 		ambient:			{ type: "fv", value: [0.1, 0.1, 0.1]},
 		ambientLightColor: 			{ type: "fv", value: [1, 1, 1] },
-		directionalLightColor: 		{ type: "fv", value: null },
-		directionalLightDirection: 	{ type: "fv", value: null },
-		pointLightColor: 			{ type: "fv", value: null },
-		pointLightPosition: 		{ type: "fv", value: null },
-		pointLightDistance: 		{ type: "fv1", value: null },
-		pointLightDecay: 			{ type: "fv1", value: null },
-		spotLightColor: 			{ type: "fv", value: null },
-		spotLightPosition: 			{ type: "fv", value: null },
-		spotLightDistance: 			{ type: "fv1", value: null },
-		spotLightDecay: 			{ type: "fv1", value: null },
-		spotLightDirection: 		{ type: "fv", value: null },
-		spotLightAngleCos: 			{ type: "fv1", value: null },
-		spotLightExponent: 			{ type: "fv1", value: null },
-		hemisphereLightSkyColor: 	{ type: "fv", value: null },
-		hemisphereLightGroundColor: { type: "fv", value: null },
-		hemisphereLightDirection: 	{ type: "fv", value: null },
+		directionalLights: {
+		    type: "sa", value: [], properties: {
+		        "direction": { type: "v3" },
+		        "color": { type: "c" },
+		        "shadow": { type: "i" },
+		        "shadowBias": { type: "f" },
+		        "shadowRadius": { type: "f" },
+		        "shadowMapSize": { type: "v2" }
+		    }
+		},
+
+		directionalShadowMap: { type: "tv", value: [] },
+		directionalShadowMatrix: { type: "m4v", value: [] },
+
+		spotLights: {
+		    type: "sa", value: [], properties: {
+		        "color": { type: "c" },
+		        "position": { type: "v3" },
+		        "direction": { type: "v3" },
+		        "distance": { type: "f" },
+		        "angleCos": { type: "f" },
+		        "penumbra": { type: "f" },
+		        "decay": { type: "f" },
+
+		        "shadow": { type: "i" },
+		        "shadowBias": { type: "f" },
+		        "shadowRadius": { type: "f" },
+		        "shadowMapSize": { type: "v2" }
+		    }
+		},
+
+		spotShadowMap: { type: "tv", value: [] },
+		spotShadowMatrix: { type: "m4v", value: [] },
+
+		pointLights: {
+		    type: "sa", value: [], properties: {
+		        "color": { type: "c" },
+		        "position": { type: "v3" },
+		        "decay": { type: "f" },
+		        "distance": { type: "f" },
+
+		        "shadow": { type: "i" },
+		        "shadowBias": { type: "f" },
+		        "shadowRadius": { type: "f" },
+		        "shadowMapSize": { type: "v2" }
+		    }
+		},
+
+		pointShadowMap: { type: "tv", value: [] },
+		pointShadowMatrix: { type: "m4v", value: [] },
+
+		hemisphereLights: {
+		    type: "sa", value: [], properties: {
+		        "direction": { type: "v3" },
+		        "skyColor": { type: "c" },
+		        "groundColor": { type: "c" }
+		    }
+		}
 	};
 	
 	this.defaultAttributeValues.normal = [0,0,0];
@@ -2412,8 +2472,8 @@ Potree.PointCloudMaterial.generateGradientTexture = function(gradient) {
 Potree.PointCloudMaterial.generateClassificationTexture  = function(classification){
 	var width = 256;
 	var height = 256;
-	var map = THREE.ImageUtils.generateDataTexture( width, height, new THREE.Color() );
-	map.magFilter = THREE.NearestFilter;
+	var map = new THREE.DataTexture(new ArrayBuffer(width * height * 3), width, height, THREE.RGBFormat, THREE.UVMapping, THREE.ClampToEdgeWrapping, THREE.ClampToEdgeWrapping, THREE.LinearFilter, THREE.LinearMipMapLinearFilter, 1);
+
 	var data = map.image.data;
 	
 	for(var x = 0; x < width; x++){
@@ -4176,7 +4236,7 @@ Potree.PointCloudOctree.prototype.updateVisibility = function(camera, renderer){
 			
 			if((typeof parent === "undefined" || parent instanceof Potree.PointCloudOctreeNode) && geometryNode.loaded){
 				var pcoNode = new Potree.PointCloudOctreeNode();
-				var sceneNode = new THREE.PointCloud(geometry, this.material);
+				var sceneNode = new THREE.Points(geometry, this.material);
 				sceneNode.visible = false;
 				
 				pcoNode.name = geometryNode.name;
@@ -4329,7 +4389,7 @@ Potree.PointCloudOctree.prototype.updateMaterial = function(material, visibleNod
 	material.spacing = this.pcoGeometry.spacing;
 	material.near = camera.near;
 	material.far = camera.far;
-	material.uniforms.octreeSize.value = this.pcoGeometry.boundingBox.size().x;
+	material.uniforms.octreeSize.value = this.pcoGeometry.boundingBox.getSize().x;
 	
 	// update visibility texture
 	if(material.pointSizeType){
@@ -4670,7 +4730,7 @@ Potree.PointCloudOctree.prototype.getProfile = function(start, end, width, depth
 			
 			var pointsFound = 0;
 			
-			if(object instanceof THREE.PointCloud){
+			if(object instanceof THREE.Points){
 				var geometry = object.geometry;
 				var positions = geometry.attributes.position;
 				var p = positions.array;
@@ -4733,7 +4793,7 @@ Potree.PointCloudOctree.prototype.getProfile = function(start, end, width, depth
 			if(object == this || object.level < depth){
 				for(var i = 0; i < object.children.length; i++){
 					var child = object.children[i];
-					if(child instanceof THREE.PointCloud){
+					if(child instanceof THREE.Points){
 						var sphere = child.boundingSphere.clone().applyMatrix4(child.matrixWorld);
 						if(cutPlane.distanceToSphere(sphere) < sphere.radius){
 							stack.push(child);	
@@ -4994,7 +5054,7 @@ Potree.PointCloudOctree.prototype.createDEM = function(node){
 	var world = sceneNode.matrixWorld;
 
 	var boundingBox = sceneNode.boundingBox.clone().applyMatrix4(world);
-	var bbSize = boundingBox.size();
+	var bbSize = boundingBox.getSize();
 	var positions = sceneNode.geometry.attributes.position.array;
 	var demSize = 64;
 	var demMArray = new Array(demSize*demSize);
@@ -5173,7 +5233,7 @@ Potree.PointCloudOctree.prototype.getDEMHeight = function(position){
 		var box = dem.boundingBox2D;
 		var insideBox = box.containsPoint(pos2);
 		if(box.containsPoint(pos2)){
-			var uv = pos2.clone().sub(box.min).divide(box.size());
+			var uv = pos2.clone().sub(box.min).divide(box.getSize());
 			var xy = uv.clone().multiplyScalar(demSize);
 			
 			var demHeight = 0;
@@ -5277,8 +5337,8 @@ Potree.PointCloudOctree.prototype.generateTerain = function(){
 			var u = i / width;
 			var v = j / height;
 			
-			var x = u * bb.size().x + bb.min.x;
-			var z = v * bb.size().z + bb.min.z;
+			var x = u * bb.getSize().x + bb.min.x;
+			var z = v * bb.getSize().z + bb.min.z;
 			
 			var y = this.getDEMHeight(new THREE.Vector3(x, 0, z));
 			if(!y){
@@ -5300,7 +5360,7 @@ Potree.PointCloudOctree.prototype.generateTerain = function(){
 	geometry.addAttribute( 'position', new THREE.BufferAttribute( vertices, 3 ) );
 	var material = new THREE.PointCloudMaterial({size: 20, color: 0x00ff00});
 	
-	var pc = new THREE.PointCloud(geometry, material);
+	var pc = new THREE.Points(geometry, material);
 	scene.add(pc);
 	
 };
@@ -5349,11 +5409,11 @@ Potree.PointCloudOctreeGeometryNode.prototype.getURL = function(){
 	var version = this.pcoGeometry.loader.version;
 	
 	if(version.equalOrHigher("1.5")){
-		url = this.pcoGeometry.octreeDir + "/" + this.getHierarchyPath() + "/" + this.name;
+		url = Potree.utils.appendUrl(Potree.utils.appendUrl(this.pcoGeometry.octreeDir, this.getHierarchyPath()), this.name);
 	}else if(version.equalOrHigher("1.4")){
-		url = this.pcoGeometry.octreeDir + "/" + this.name;
+		url = Potree.utils.appendUrl(this.pcoGeometry.octreeDir, this.name);
 	}else if(version.upTo("1.3")){
-		url = this.pcoGeometry.octreeDir + "/" + this.name;
+		url = Potree.utils.appendUrl(this.pcoGeometry.octreeDir, this.name);
 	}
 	
 	return url;
@@ -5487,7 +5547,7 @@ Potree.PointCloudOctreeGeometryNode.prototype.loadHierachyThenPoints = function(
 	};
 	if((node.level % node.pcoGeometry.hierarchyStepSize) === 0){
 		//var hurl = node.pcoGeometry.octreeDir + "/../hierarchy/" + node.name + ".hrc";
-		var hurl = node.pcoGeometry.octreeDir + "/" + node.getHierarchyPath() + "/" + node.name + ".hrc";
+		var hurl = Potree.utils.appendUrl(Potree.utils.appendUrl(node.pcoGeometry.octreeDir, node.getHierarchyPath()), node.name + ".hrc");
 		
 		var xhr = new XMLHttpRequest();
 		xhr.open('GET', hurl, true);
@@ -5851,7 +5911,65 @@ Potree.utils.screenPass = new function(){
 		}
 	}
 }();
-	
+
+/**
+ * Appends a path to an existing URL while preserving any query string parameters present in the URL. Also
+ * can be used to replace a portion of the path of a URL.
+ *
+ * @param {string} url                  A URL (absolute or relative) with optional query string parameters.
+ * @param {string} path                 A path that will be appended to the URL. Should not include
+ *                                      query string parameters.
+ * @param {boolean} [appendSlash=true]  Specifies whether this function should ensure a single slash
+ *                                      exists between the url and path before concatenating them.
+ * @param {boolean} [removeLast=false]  Specifies whether the last directory in the path of the URL should
+ *                                      be replaced with the path given as the second parameter. This
+ *                                      should be used in cases where you want to modify a URL's path,
+ *                                      rather than simply append to it.
+ *
+ * @example <caption>Append to the path of a URL.</caption>
+ * Potree.utils.appendUrl("http://api.service.com/company/users?first=Michael&last=Jackson", "/members")
+ * => "http://api.service.com/company/users/members?first=Michael&last=Jackson"
+ *
+ * @Example <caption>Replace the last part of the path of a URL.</caption>
+ * Potree.utils.appendUrl("http://api.service.com/company/users?first=Michael&last=Jackson", "/members", true, true)
+ * => "http://api.service.com/company/members?first=Michael&last=Jackson"
+ */
+Potree.utils.appendUrl = function(url, path, appendSlash, removeLast){
+		// Set defaults
+	if(typeof appendSlash === "undefined"){
+		appendSlash = true;
+	}
+
+	if(typeof removeLast === "undefined"){
+		removeLast = false;
+	}
+
+	// Split out the base and query string
+	var parts = url.split('?');
+	var base = parts.shift();
+
+	// Remove the last part of the URL path if set
+	if(removeLast){
+		base = base.substring(0, base.lastIndexOf('/'));
+	}
+
+	// Make sure there is a slash and only one slash between url fragments
+	if(appendSlash){
+		base = base.replace(/\/?$/, '/');
+		path = path.replace(/^\/?/g, '');
+	}
+
+	// Append fragments
+	var newUrl = base + path;
+
+	// Append query string
+	if(parts.length){
+		newUrl += '?' + parts.join('?');
+	}
+
+	return newUrl;
+}
+
 	
 	
 
@@ -8639,7 +8757,7 @@ Potree.PointCloudArena4D.prototype.updateMaterial = function(camera, renderer){
 	
 	this.material.minSize = 3;
 	
-	var bbSize = this.boundingBox.size();
+	var bbSize = this.boundingBox.getSize();
 	this.material.bbSize = [bbSize.x, bbSize.y, bbSize.z];
 };
 
@@ -8816,7 +8934,7 @@ Potree.PointCloudArena4D.prototype.update = function(camera, renderer){
 				var sphere = child.boundingSphere;
 				var distance = sphere.center.distanceTo(camObjPos);
 				
-				var radius = box.size().length() / 2;
+				var radius = box.getSize().length() / 2;
 				var fov = camera.fov / 2 * Math.PI / 180.0;
 				var pr = 1 / Math.tan(fov) * radius / Math.sqrt(distance * distance - radius * radius);
 				
@@ -9478,7 +9596,7 @@ Potree.PointCloudArena4DGeometry.load = function(url, callback){
 				geometry.offset = offset;
 				
 				var center = geometry.boundingBox.center();
-				var radius = geometry.boundingBox.size().length() / 2;
+				var radius = geometry.boundingBox.getSize().length() / 2;
 				geometry.boundingSphere = new THREE.Sphere(center, radius);
 				
 				geometry.loadHierarchy();
@@ -9554,7 +9672,7 @@ Potree.PointCloudArena4DGeometry.prototype.loadHierarchy = function(){
 			if(stack.length > 0){
 				var parent = stack[stack.length-1];
 				node.boundingBox = parent.boundingBox.clone();
-				var parentBBSize = parent.boundingBox.size();
+				var parentBBSize = parent.boundingBox.getSize();
 				
 				if(parent.hasLeft && !parent.left){
 					parent.left = node;
@@ -9568,7 +9686,7 @@ Potree.PointCloudArena4DGeometry.prototype.loadHierarchy = function(){
 					}
 					
 					var center = node.boundingBox.center();
-					var radius = node.boundingBox.size().length() / 2;
+					var radius = node.boundingBox.getSize().length() / 2;
 					node.boundingSphere = new THREE.Sphere(center, radius);
 					
 				}else{
@@ -9583,18 +9701,18 @@ Potree.PointCloudArena4DGeometry.prototype.loadHierarchy = function(){
 					}
 					
 					var center = node.boundingBox.center();
-					var radius = node.boundingBox.size().length() / 2;
+					var radius = node.boundingBox.getSize().length() / 2;
 					node.boundingSphere = new THREE.Sphere(center, radius);
 				}
 			}else{
 				root = node;
 				root.boundingBox = scope.boundingBox.clone();
 				var center = root.boundingBox.center();
-				var radius = root.boundingBox.size().length() / 2;
+				var radius = root.boundingBox.getSize().length() / 2;
 				root.boundingSphere = new THREE.Sphere(center, radius);
 			}
 			
-			var bbSize = node.boundingBox.size();
+			var bbSize = node.boundingBox.getSize();
 			node.spacing = ((bbSize.x + bbSize.y + bbSize.z) / 3) / 75;
 			
 			stack.push(node);

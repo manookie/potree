@@ -34,7 +34,7 @@ Potree.POCLoader.load = function load(url, callback) {
 				if(fMno.octreeDir.indexOf("http") === 0){
 					pco.octreeDir = fMno.octreeDir;
 				}else{
-					pco.octreeDir = url + "/../" + fMno.octreeDir;
+					pco.octreeDir = Potree.utils.appendUrl(url, fMno.octreeDir, true, true);
 				}
 				
 				pco.spacing = fMno.spacing;
